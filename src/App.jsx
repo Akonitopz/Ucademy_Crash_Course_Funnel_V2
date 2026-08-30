@@ -81,17 +81,34 @@ const FAQS = [
 // ---------------------------------------------------------------------
 
 function GapMap({ subjects }) {
-  const rows = subjects.length ? subjects : ['Subject'];
+  const rows = (subjects.length ? subjects : ['Maths', 'English', 'Science']).slice(0, 3);
+  const ROW_H = 30;
+  const height = rows.length * ROW_H + 6;
   return (
-    <svg viewBox="0 0 640 40" className="gap-map" role="img" aria-label="Illustrative gap map">
-      {rows.slice(0, 3).map((s, i) => {
-        const known = 30 + i * 18;
+    <svg
+      viewBox={`0 0 640 ${height}`}
+      className="gap-map"
+      role="img"
+      aria-label="Where your child is now, and the gap we map on the call"
+    >
+      <defs>
+        {/* Diagonal hatch. SVG fill can't take a CSS gradient, it needs a real
+            pattern defined here and referenced by id. */}
+        <pattern id="gapHatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+          <rect width="6" height="6" fill="#f2f1ef" />
+          <line x1="0" y1="0" x2="0" y2="6" stroke="#8ce5d2" strokeWidth="3" />
+        </pattern>
+      </defs>
+      {rows.map((s, i) => {
+        const known = 0.3 + i * 0.14; // 30%, 44%, 58% of the bar
+        const trackW = 440;
+        const knownW = trackW * known;
         return (
-          <g key={s} transform={`translate(0 ${i * 34})`}>
-            <text x="0" y="14" className="gap-map-label">{s}</text>
-            <rect x="140" y="4" width="460" height="14" className="gap-map-track" />
-            <rect x="140" y="4" width={known * 4.6} height="14" className="gap-map-known" />
-            <rect x={140 + known * 4.6} y="4" width={460 - known * 4.6} height="14" className="gap-map-hatch" />
+          <g key={s} transform={`translate(0 ${i * ROW_H})`}>
+            <text x="0" y="15" className="gap-map-label">{s}</text>
+            <rect x="150" y="4" width={trackW} height="14" rx="7" className="gap-map-track" />
+            <rect x={150 + knownW} y="4" width={trackW - knownW} height="14" rx="7" className="gap-map-hatch" />
+            <rect x="150" y="4" width={knownW} height="14" rx="7" className="gap-map-known" />
           </g>
         );
       })}
@@ -340,7 +357,7 @@ export default function App() {
 
             {steps[step] === 'contact' && (
               <form onSubmit={handleSubmit} className="contact-form">
-                <legend>Where should we send the confirmation?</legend>
+                <p className="form-legend">Where should we send the confirmation?</p>
                 <input type="text" name="company" value={company} onChange={(e) => setCompany(e.target.value)} className="hp-field" tabIndex={-1} autoComplete="off" aria-hidden="true" />
                 <label>First name<input required value={contact.first_name} onChange={(e) => setContact((c) => ({ ...c, first_name: e.target.value }))} /></label>
                 <label>Last name<input value={contact.last_name} onChange={(e) => setContact((c) => ({ ...c, last_name: e.target.value }))} /></label>
@@ -401,13 +418,13 @@ export default function App() {
         .attention-bar { background: var(--red); color: var(--white); text-align: center; padding: 0.6rem 1rem; font-size: 0.9rem; }
 
         .hero { padding: 3rem 1.5rem 2.5rem; text-align: center; background: linear-gradient(180deg, var(--mint) 0%, var(--white) 100%); }
-        .hero h1 { font-size: clamp(1.6rem, 4vw, 2.6rem); max-width: 40ch; margin-inline: auto; }
+        .hero h1 { font-size: clamp(1.5rem, 3.4vw, 2.4rem); max-width: min(38ch, 100%); margin-inline: auto; text-wrap: balance; overflow-wrap: break-word; }
         .hero-sub { max-width: 50ch; margin: 0.75rem auto 1.5rem; }
         .gap-map { width: 100%; max-width: 560px; height: auto; margin: 1.5rem auto 0.25rem; display: block; }
-        .gap-map-label { font-family: 'Space Mono', monospace; font-size: 8px; fill: var(--ink); }
-        .gap-map-track { fill: #eee; }
+        .gap-map-label { font-family: 'Space Mono', monospace; font-size: 11px; fill: var(--ink); opacity: 0.75; }
+        .gap-map-track { fill: #f2f1ef; }
         .gap-map-known { fill: var(--coral); }
-        .gap-map-hatch { fill: url(#hatch); fill: repeating-linear-gradient(45deg, var(--mint), var(--mint) 2px, transparent 2px, transparent 4px); }
+        .gap-map-hatch { fill: url(#gapHatch); }
 
         .cta { background: var(--ink); color: var(--white); border: none; border-radius: 999px; padding: 0.9rem 1.8rem; font-weight: 700; cursor: pointer; font-size: 1rem; display: inline-block; text-decoration: none; margin-top: 1rem; }
         .cta.small { padding: 0.7rem 1.4rem; margin-top: 0; }
@@ -436,7 +453,7 @@ export default function App() {
         .quiz-anchor { background: #faf9f7; border-radius: 24px; }
         .quiz-cta { text-align: center; }
         fieldset { border: none; padding: 0; margin: 0; }
-        legend { font-weight: 700; font-size: 1.1rem; margin-bottom: 1rem; padding: 0; }
+        legend, .form-legend { font-weight: 700; font-size: 1.1rem; margin: 0 0 1rem; padding: 0; font-family: 'Bricolage Grotesque', sans-serif; }
         .option, .option-grid button { display: block; width: 100%; text-align: left; padding: 0.85rem 1rem; margin-bottom: 0.5rem; border: 2px solid #ddd; border-radius: 12px; background: var(--white); cursor: pointer; font-size: 1rem; }
         .option.selected { border-color: var(--coral); background: #fff4f2; }
         .option-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; }

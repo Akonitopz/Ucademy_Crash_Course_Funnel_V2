@@ -123,6 +123,7 @@ export function track(eventName, custom = {}, opts = {}) {
 export const trackQuizStart = () => track('ViewContent', { content_name: 'consultation_quiz' });
 export const trackYearSelected = (year) => track('YearSelected', { year_group: year });
 export const trackSubjectsSelected = (subjects) => track('SubjectsSelected', { subjects: subjects.join(',') });
+export const trackTestimonialPlay = (id) => track('TestimonialPlay', { content_name: 'consultation_proof', video_id: id });
 
 // --- submission --------------------------------------------------------
 // Fires Lead in the browser and server-side with a shared event_id.

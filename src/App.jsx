@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   initPixel, setConsent, hasConsent, captureAttribution,
   trackQuizStart, trackYearSelected, trackSubjectsSelected,
-  submitLead, trackBookingClick,
+  trackTestimonialPlay, submitLead, trackBookingClick,
 } from './tracking';
 
 // ---------------------------------------------------------------------
@@ -55,6 +55,23 @@ const WHO_ITS_NOT_FOR = [
   'Outside the UK or UAE',
   'A student booking without a parent or guardian aware',
 ];
+
+// Testimonial videos. Drop the real URLs in and the section fills itself.
+// src: a direct file URL (.mp4/.webm on ucademy.co.uk or a CDN). Left empty,
+// the card renders a "to confirm" placeholder rather than a broken player, so
+// the gap stays visible to Usman on review.
+// poster: the still frame shown before play. Optional, but without one the
+// browser picks a frame itself, usually a mid-blink.
+// name/detail: shown under the video. Leave empty if we don't have permission
+// to name the student yet.
+const TESTIMONIALS = [
+  { id: 't1', src: '', poster: '', name: '', detail: '' },
+  { id: 't2', src: '', poster: '', name: '', detail: '' },
+  { id: 't3', src: '', poster: '', name: '', detail: '' },
+  { id: 't4', src: '', poster: '', name: '', detail: '' },
+];
+
+const TRUSTPILOT_URL = 'https://uk.trustpilot.com/review/ucademy.co.uk';
 
 // Format check only, catches typos and obviously fake numbers before submit.
 // Doesn't prove the number is real or reachable - the server-side lookup
@@ -113,6 +130,53 @@ function GapMap({ subjects }) {
         );
       })}
     </svg>
+  );
+}
+
+// Module scope, like everything else here. Defining it inside App() would make
+// React treat it as a new component type on every render, remounting the
+// <video> elements and killing playback mid-sentence.
+function TestimonialWall({ onPlay }) {
+  const refs = useRef({});
+
+  // Four testimonials playing at once is noise. Starting one stops the others.
+  function handlePlay(id) {
+    Object.entries(refs.current).forEach(([key, el]) => {
+      if (key !== id && el && !el.paused) el.pause();
+    });
+    onPlay(id);
+  }
+
+  return (
+    <div className="testimonial-grid">
+      {TESTIMONIALS.map((t) => (
+        <figure key={t.id} className="testimonial">
+          {t.src ? (
+            <video
+              ref={(el) => { refs.current[t.id] = el; }}
+              className="testimonial-video"
+              src={t.src}
+              poster={t.poster || undefined}
+              controls
+              playsInline
+              preload="metadata"
+              onPlay={() => handlePlay(t.id)}
+            />
+          ) : (
+            <div className="testimonial-placeholder">
+              <span className="tbc-chip">To confirm</span>
+              <p>Video and permission to publish pending</p>
+            </div>
+          )}
+          {(t.name || t.detail) && (
+            <figcaption>
+              {t.name && <strong>{t.name}</strong>}
+              {t.detail && <span>{t.detail}</span>}
+            </figcaption>
+          )}
+        </figure>
+      ))}
+    </div>
   );
 }
 
@@ -198,6 +262,16 @@ export default function App() {
     if (result?.leadId) trackBookingClick(result.leadId);
   }
 
+  // Upper funnel, unfiltered. A parent who watches proof is warmer than one who
+  // scrolls past it, and it's a retargeting audience worth having. Fires once
+  // per video per page view, not on every resume after a pause.
+  const playedRef = useRef(new Set());
+  function handleTestimonialPlay(id) {
+    if (playedRef.current.has(id)) return;
+    playedRef.current.add(id);
+    trackTestimonialPlay(id);
+  }
+
   return (
     <div className="page">
       {!consentDecided && (
@@ -227,8 +301,11 @@ export default function App() {
       </section>
 
       <section className="section proof">
-        <h2>Rated 4.9 from 150+ reviews on Trustpilot</h2>
-        <p className="proof-note">Real parent testimonials: TBC, pending permission to quote.</p>
+        <h2>Students who have been here before</h2>
+        <p className="proof-sub">Where they started, what got in the way, and what changed. No script, their own words.</p>
+        <TestimonialWall onPlay={handleTestimonialPlay} />
+        <p className="proof-rating">Rated 4.9 from 150+ reviews on Trustpilot</p>
+        <a className="proof-link" href={TRUSTPILOT_URL} target="_blank" rel="noreferrer">Read every review on Trustpilot</a>
       </section>
 
       <section className="section uncovers">
@@ -434,6 +511,18 @@ export default function App() {
         .founder-letter, .catch { background: var(--yellow); border-radius: 24px; max-width: 680px; }
         .proof { text-align: center; }
         .proof-note, .tbc-note { font-size: 0.85rem; opacity: 0.7; }
+        .proof-sub { max-width: 46ch; margin: 0 auto 1.75rem; opacity: 0.8; }
+        .proof-rating { font-weight: 700; margin: 1.75rem 0 0.25rem; }
+        .proof-link { font-family: 'Space Mono', monospace; font-size: 0.75rem; letter-spacing: 0.04em; text-transform: uppercase; color: var(--red); }
+
+        .testimonial-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+        @media (max-width: 640px) { .testimonial-grid { grid-template-columns: 1fr; } }
+        .testimonial { margin: 0; }
+        .testimonial-video, .testimonial-placeholder { width: 100%; aspect-ratio: 16 / 10; border-radius: 16px; background: var(--ink); display: block; }
+        .testimonial-placeholder { background: #f2f1ef; border: 2px dashed #ddd; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.5rem; }
+        .testimonial-placeholder p { margin: 0; font-size: 0.8rem; opacity: 0.6; }
+        .testimonial figcaption { margin-top: 0.6rem; font-size: 0.85rem; display: flex; flex-direction: column; gap: 0.1rem; }
+        .testimonial figcaption span { opacity: 0.7; }
 
         .uncovers ol { list-style: none; padding: 0; margin: 1.5rem 0; }
         .uncovers li { display: flex; gap: 1rem; padding: 0.75rem 0; border-top: 1px solid #eee; }

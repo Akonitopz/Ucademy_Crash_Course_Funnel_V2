@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   initPixel, setConsent, hasConsent, captureAttribution,
   trackQuizStart, trackYearSelected, trackSubjectsSelected,
-  trackTestimonialPlay, submitLead, trackBookingClick,
+  trackProofSeen, submitLead, trackBookingClick,
 } from './tracking';
 
 // ---------------------------------------------------------------------
@@ -56,19 +56,19 @@ const WHO_ITS_NOT_FOR = [
   'A student booking without a parent or guardian aware',
 ];
 
-// Testimonial videos. Drop the real URLs in and the section fills itself.
-// src: a direct file URL (.mp4/.webm on ucademy.co.uk or a CDN). Left empty,
-// the card renders a "to confirm" placeholder rather than a broken player, so
-// the gap stays visible to Usman on review.
-// poster: the still frame shown before play. Optional, but without one the
-// browser picks a frame itself, usually a mid-blink.
-// name/detail: shown under the video. Leave empty if we don't have permission
-// to name the student yet.
+// Testimonial videos, embedded from Google Drive.
+// id: the Drive file ID. Each file MUST be shared "Anyone with the link -
+// Viewer" or parents see a Google sign-in wall instead of the video.
+// caption: shown under the player. Leave empty until we have permission to
+// name the student.
+//
+// Drive is a stopgap, not the destination. See the note in the proof section
+// below before this goes behind real ad spend.
 const TESTIMONIALS = [
-  { id: 't1', src: '', poster: '', name: '', detail: '' },
-  { id: 't2', src: '', poster: '', name: '', detail: '' },
-  { id: 't3', src: '', poster: '', name: '', detail: '' },
-  { id: 't4', src: '', poster: '', name: '', detail: '' },
+  { id: '1e_Fxad0rXhiTVSOg_8aUDVTX7uMAUzEI', caption: '' },
+  { id: '1fgwu2p09XwWmgwwdsu3mmLCmlXAz54HY', caption: '' },
+  { id: '1freL_TMGunIH8moQCTr5kkjOm6e8XE2o', caption: '' },
+  { id: '1k2sPpKT9URjpyYO2KswCppsN1IXn4IuR', caption: '' },
 ];
 
 const TRUSTPILOT_URL = 'https://uk.trustpilot.com/review/ucademy.co.uk';
@@ -135,45 +135,49 @@ function GapMap({ subjects }) {
 
 // Module scope, like everything else here. Defining it inside App() would make
 // React treat it as a new component type on every render, remounting the
-// <video> elements and killing playback mid-sentence.
-function TestimonialWall({ onPlay }) {
-  const refs = useRef({});
+// iframes and restarting any video a parent was part-way through.
+//
+// Drive players are cross-origin iframes, so we cannot see play, pause or
+// watch time, and we cannot stop one video when another starts. onSeen fires
+// once when the wall scrolls into view, which is the only honest signal
+// available while the videos live on Drive.
+function TestimonialWall({ onSeen }) {
+  const wrapRef = useRef(null);
+  const seenRef = useRef(false);
 
-  // Four testimonials playing at once is noise. Starting one stops the others.
-  function handlePlay(id) {
-    Object.entries(refs.current).forEach(([key, el]) => {
-      if (key !== id && el && !el.paused) el.pause();
-    });
-    onPlay(id);
-  }
+  useEffect(() => {
+    const el = wrapRef.current;
+    if (!el || typeof IntersectionObserver === 'undefined') return undefined;
+    const io = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting && !seenRef.current) {
+            seenRef.current = true;
+            onSeen();
+            io.disconnect();
+          }
+        });
+      },
+      { threshold: 0.4 },
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, [onSeen]);
 
   return (
-    <div className="testimonial-grid">
+    <div className="testimonial-grid" ref={wrapRef}>
       {TESTIMONIALS.map((t) => (
         <figure key={t.id} className="testimonial">
-          {t.src ? (
-            <video
-              ref={(el) => { refs.current[t.id] = el; }}
-              className="testimonial-video"
-              src={t.src}
-              poster={t.poster || undefined}
-              controls
-              playsInline
-              preload="metadata"
-              onPlay={() => handlePlay(t.id)}
+          <div className="testimonial-frame">
+            <iframe
+              src={`https://drive.google.com/file/d/${t.id}/preview`}
+              title={t.caption || 'Ucademy student testimonial'}
+              allow="autoplay; fullscreen"
+              allowFullScreen
+              loading="lazy"
             />
-          ) : (
-            <div className="testimonial-placeholder">
-              <span className="tbc-chip">To confirm</span>
-              <p>Video and permission to publish pending</p>
-            </div>
-          )}
-          {(t.name || t.detail) && (
-            <figcaption>
-              {t.name && <strong>{t.name}</strong>}
-              {t.detail && <span>{t.detail}</span>}
-            </figcaption>
-          )}
+          </div>
+          {t.caption && <figcaption>{t.caption}</figcaption>}
         </figure>
       ))}
     </div>
@@ -262,15 +266,15 @@ export default function App() {
     if (result?.leadId) trackBookingClick(result.leadId);
   }
 
-  // Upper funnel, unfiltered. A parent who watches proof is warmer than one who
-  // scrolls past it, and it's a retargeting audience worth having. Fires once
-  // per video per page view, not on every resume after a pause.
-  const playedRef = useRef(new Set());
-  function handleTestimonialPlay(id) {
-    if (playedRef.current.has(id)) return;
-    playedRef.current.add(id);
-    trackTestimonialPlay(id);
-  }
+  // Upper funnel, unfiltered. A parent who scrolls as far as the proof wall is
+  // warmer than one who bounces off the hero, and it makes a retargeting
+  // audience worth having. Fires once per page view.
+  const seenProofRef = useRef(false);
+  const handleProofSeen = useCallback(() => {
+    if (seenProofRef.current) return;
+    seenProofRef.current = true;
+    trackProofSeen();
+  }, []);
 
   return (
     <div className="page">
@@ -303,7 +307,7 @@ export default function App() {
       <section className="section proof">
         <h2>Students who have been here before</h2>
         <p className="proof-sub">Where they started, what got in the way, and what changed. No script, their own words.</p>
-        <TestimonialWall onPlay={handleTestimonialPlay} />
+        <TestimonialWall onSeen={handleProofSeen} />
         <p className="proof-rating">Rated 4.9 from 150+ reviews on Trustpilot</p>
         <a className="proof-link" href={TRUSTPILOT_URL} target="_blank" rel="noreferrer">Read every review on Trustpilot</a>
       </section>
@@ -518,11 +522,9 @@ export default function App() {
         .testimonial-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
         @media (max-width: 640px) { .testimonial-grid { grid-template-columns: 1fr; } }
         .testimonial { margin: 0; }
-        .testimonial-video, .testimonial-placeholder { width: 100%; aspect-ratio: 16 / 10; border-radius: 16px; background: var(--ink); display: block; }
-        .testimonial-placeholder { background: #f2f1ef; border: 2px dashed #ddd; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.5rem; }
-        .testimonial-placeholder p { margin: 0; font-size: 0.8rem; opacity: 0.6; }
-        .testimonial figcaption { margin-top: 0.6rem; font-size: 0.85rem; display: flex; flex-direction: column; gap: 0.1rem; }
-        .testimonial figcaption span { opacity: 0.7; }
+        .testimonial-frame { position: relative; width: 100%; aspect-ratio: 16 / 10; border-radius: 16px; overflow: hidden; background: var(--ink); }
+        .testimonial-frame iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+        .testimonial figcaption { margin-top: 0.6rem; font-size: 0.85rem; text-align: left; opacity: 0.75; }
 
         .uncovers ol { list-style: none; padding: 0; margin: 1.5rem 0; }
         .uncovers li { display: flex; gap: 1rem; padding: 0.75rem 0; border-top: 1px solid #eee; }

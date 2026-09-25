@@ -123,7 +123,10 @@ export function track(eventName, custom = {}, opts = {}) {
 export const trackQuizStart = () => track('ViewContent', { content_name: 'consultation_quiz' });
 export const trackYearSelected = (year) => track('YearSelected', { year_group: year });
 export const trackSubjectsSelected = (subjects) => track('SubjectsSelected', { subjects: subjects.join(',') });
-export const trackTestimonialPlay = (id) => track('TestimonialPlay', { content_name: 'consultation_proof', video_id: id });
+// The testimonial videos are cross-origin Drive iframes, so plays and watch
+// time are invisible to us. This fires when the proof wall scrolls into view,
+// which is a real scroll-depth signal and not a pretend play event.
+export const trackProofSeen = () => track('ProofSeen', { content_name: 'consultation_proof' });
 
 // --- submission --------------------------------------------------------
 // Fires Lead in the browser and server-side with a shared event_id.

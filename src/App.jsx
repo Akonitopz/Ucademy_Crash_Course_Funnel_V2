@@ -304,7 +304,7 @@ export default function App() {
         <p>I'm Usman, I studied engineering at the University of Oxford and the University of Birmingham, and I run Ucademy. Most parents call us after months of guessing which tutor, which subject, which exam board detail actually matters. This call exists so you're not guessing. Thirty minutes, no charge, and you'll know precisely where your child stands and what to do next.</p>
       </section>
 
-      <section className="section proof">
+      <section className="section proof proof-wide">
         <h2>Students who have been here before</h2>
         <p className="proof-sub">Where they started, what got in the way, and what changed. No script, their own words.</p>
         <TestimonialWall onSeen={handleProofSeen} />
@@ -519,11 +519,16 @@ export default function App() {
         .proof-rating { font-weight: 700; margin: 1.75rem 0 0.25rem; }
         .proof-link { font-family: 'Space Mono', monospace; font-size: 0.75rem; letter-spacing: 0.04em; text-transform: uppercase; color: var(--red); }
 
-        .testimonial-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
-        @media (max-width: 640px) { .testimonial-grid { grid-template-columns: 1fr; } }
+        /* Wider than the text sections so four portrait clips sit in one row. */
+        .proof-wide { max-width: 960px; }
+        .testimonial-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.75rem; }
+        @media (max-width: 760px) { .testimonial-grid { grid-template-columns: 1fr 1fr; } }
         .testimonial { margin: 0; }
-        .testimonial-frame { position: relative; width: 100%; aspect-ratio: 16 / 10; border-radius: 16px; overflow: hidden; background: var(--ink); }
-        .testimonial-frame iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+        /* These are vertical phone videos. A landscape box makes Drive's player
+           overflow the frame, so the ratio has to match the source. If a clip
+           turns out to be landscape, change this one value to 16 / 9. */
+        .testimonial-frame { position: relative; width: 100%; aspect-ratio: 9 / 16; border-radius: 16px; overflow: hidden; background: var(--ink); }
+        .testimonial-frame iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; display: block; }
         .testimonial figcaption { margin-top: 0.6rem; font-size: 0.85rem; text-align: left; opacity: 0.75; }
 
         .uncovers ol { list-style: none; padding: 0; margin: 1.5rem 0; }

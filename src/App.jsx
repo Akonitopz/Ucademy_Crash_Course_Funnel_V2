@@ -519,15 +519,15 @@ export default function App() {
         .proof-rating { font-weight: 700; margin: 1.75rem 0 0.25rem; }
         .proof-link { font-family: 'Space Mono', monospace; font-size: 0.75rem; letter-spacing: 0.04em; text-transform: uppercase; color: var(--red); }
 
-        /* Wider than the text sections so four portrait clips sit in one row. */
-        .proof-wide { max-width: 960px; }
-        .testimonial-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.75rem; }
-        @media (max-width: 760px) { .testimonial-grid { grid-template-columns: 1fr 1fr; } }
+        /* Wider than the text sections so two 16:9 players have real size.
+           Drive's embedded player renders its controls and overlay at a fixed
+           minimum scale, so a narrow column makes them spill past the frame.
+           Two columns keeps each player wide enough to behave. */
+        .proof-wide { max-width: 900px; }
+        .testimonial-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; }
+        @media (max-width: 720px) { .testimonial-grid { grid-template-columns: 1fr; } }
         .testimonial { margin: 0; }
-        /* These are vertical phone videos. A landscape box makes Drive's player
-           overflow the frame, so the ratio has to match the source. If a clip
-           turns out to be landscape, change this one value to 16 / 9. */
-        .testimonial-frame { position: relative; width: 100%; aspect-ratio: 9 / 16; border-radius: 16px; overflow: hidden; background: var(--ink); }
+        .testimonial-frame { position: relative; width: 100%; aspect-ratio: 16 / 9; border-radius: 14px; overflow: hidden; background: var(--ink); border: 2px solid var(--ink); box-shadow: 0 2px 0 rgba(24, 23, 22, 0.08); }
         .testimonial-frame iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; display: block; }
         .testimonial figcaption { margin-top: 0.6rem; font-size: 0.85rem; text-align: left; opacity: 0.75; }
 
